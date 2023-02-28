@@ -1,0 +1,28 @@
+FROM pytorch/pytorch:1.13.0-cuda11.6-cudnn8-runtime
+# nvcr.io/nvidia/pytorch:22.08-py3
+# docker pull pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
+ENV DEBIAN_FRONTEND noninteractive
+
+COPY setup/requirements.txt /opt/app/requirements.txt
+
+WORKDIR /opt/app
+
+RUN apt-get update && apt-get install -y ffmpeg tmux git
+
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    pip install autopep8
+#    && \
+#    pip install git+https://github.com/mo-arvan/label-studio-ml-backend.git
+
+
+#RUN wget -q https://github.com/mozilla/geckodriver/releases/download/v0.31.0/geckodriver-v0.31.0-linux64.tar.gz && \
+#    tar -xvzf geckodriver-v0.31.0-linux64.tar.gz && \
+#    rm geckodriver-v0.31.0-linux64.tar.gz && \
+#    mv geckodriver /usr/local/bin/
+
+# Packages that require runtime download can be cached by running the python -c "CODE"
+# Replace "CODE" with the lines that handle downloading
+# RUN python -c "CODE"
+
+WORKDIR /workspace

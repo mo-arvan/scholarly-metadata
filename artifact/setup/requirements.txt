@@ -1,0 +1,8 @@
+numpy
+pandas
+requests
+matplotlib
+scikit-learn
+PyPDF2
+seaborn
+openreview-py
