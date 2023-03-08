@@ -12,6 +12,8 @@ import pandas as pd
 import logging
 import time
 
+from selenium import webdriver
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
@@ -70,67 +72,36 @@ def run_in_parallel_cpu_bound(func, iterable, max_workers=None, disable=False, t
     return results
 
 
-def get_interspeech_papers(starting_year, ending_year):
-    """Get the papers from the interspeech conference.
-
-    Args:
-        starting_year (int): The year to start from.
-        ending_year (int): The year to end at.
-
-    Returns:
-        list: A list of paper urls.
-    """
-    papers = []
-    for year in range(starting_year, ending_year + 1):
-        interspeech_year = f'interspeech_{year}'
-        url = f'https://www.isca-speech.org/archive/{interspeech_year}/'
-        r = requests.get(url)
-        soup = BeautifulSoup(r.text, 'html.parser')
-
-        # find all elemnts with class 'paper'
-        paper_urls = soup.find_all('a', class_='w3-text')
-
-        # get the href attribute of each element
-        paper_urls = [interspeech_year + "/" + paper['href'].replace('html', 'pdf')
-                      for paper in paper_urls if paper['href'].endswith('html')]
-
-        # for paper_url in paper_urls:
-        #     paper = get_paper(paper_url)
-        #     papers.append(paper)
-        papers.extend(paper_urls)
-
-    return papers
-
-
-def download_paper(url, headers, download_dir):
+def download_paper(info_tuple, headers, download_dir):
     """
     Download the paper from the interspeech conference.
 
     Args:
         url (str): The url of the paper.
     """
-    interspeech_year_dir, file_name = url.split('/')
-    download_path = os.path.join(
-        download_dir, f'{interspeech_year_dir}/{file_name}')
-    if not os.path.exists(f'papers/{interspeech_year_dir}'):
-        os.makedirs(f'papers/{interspeech_year_dir}')
+    conference, year, url = info_tuple
+    file_name = url.split('/')[-1]
+
+    download_dir_with_year = os.path.join(
+        download_dir, f'{conference.lower()}_{year}')
+    download_path = os.path.join(download_dir_with_year, file_name)
+    if not os.path.exists(download_dir_with_year):
+        os.makedirs(download_dir_with_year)
 
     if os.path.exists(download_path):
         return
 
-    paper_dl_url = f'https://www.isca-speech.org/archive/pdfs/{url}'
-
     # download pdf file and save it in to a file
-    r = requests.get(paper_dl_url, headers=headers)
+    r = requests.get(url, headers=headers)
 
     if r.status_code != 200:
-        logging.info(f"Failed to download {paper_dl_url}")
+        logging.info(f"Failed to download {url}")
         return
     with open(download_path, 'wb') as f:
         f.write(r.content)
 
 
-def download_interspeech_papers(url_list, download_dir):
+def download_papers(url_list, download_dir):
     """
     Download the papers from the interspeech conference.
 
@@ -143,10 +114,41 @@ def download_interspeech_papers(url_list, download_dir):
                           download_dir=download_dir)
 
     run_in_parallel_io_bound(download_fn, url_list,
-                             max_workers=16, disable=False)
+                             max_workers=24, disable=False)
 
 
-def search_paper(paper_path, search_term):
+def main():
+
+    start_time = time.perf_counter()
+
+    download_dir = 'papers'
+
+    neurips_papers = pd.read_csv("results/neurips_papers.csv")
+    interspeech_papers = pd.read_csv("results/interspeech_papers.csv")
+
+    papers_url_list = []
+
+    papers_url_list.extend(
+        neurips_papers[["conference", "year", "Paper"]].to_records(index=False))
+
+    papers_url_list.extend(
+        interspeech_papers[["conference", "year", "url"]].to_records(index=False))
+
+    download_papers(papers_url_list, download_dir)
+
+    logger.info(f"Found {len(interspeech_papers)} papers.")
+    return
+    search_papers(download_dir, 'github.com')
+
+    end_time = time.perf_counter()
+    logger.info(f"Finished in {end_time - start_time} seconds")
+
+
+if __name__ == '__main__':
+    main()
+
+
+def search_pdf(paper_path, search_term):
     """
     Search the paper for a search term.
 
@@ -190,7 +192,7 @@ def search_papers(papers_dir, search_term):
             if file.endswith('.pdf'):
                 all_files.append(os.path.join(root, file))
 
-    search_fn = partial(search_paper, search_term=search_term)
+    search_fn = partial(search_pdf, search_term=search_term)
 
     result = run_in_parallel_cpu_bound(search_fn, all_files,
                                        max_workers=16, disable=False)
@@ -204,24 +206,3 @@ def search_papers(papers_dir, search_term):
     results_df.to_csv('results/interspeech.csv')
     logger.info(
         f"Found {len(results_with_code)} papers with code. out of {len(results_searched)} papers.")
-
-
-def main():
-
-    start_time = time.perf_counter()
-
-    download_dir = 'papers'
-    papers = get_interspeech_papers(2017, 2022)
-
-    logger.info(f"Found {len(papers)} papers.")
-
-    download_interspeech_papers(papers, download_dir)
-
-    search_papers(download_dir, 'github.com')
-
-    end_time = time.perf_counter()
-    logger.info(f"Finished in {end_time - start_time} seconds")
-
-
-if __name__ == '__main__':
-    main()

@@ -6,3 +6,6 @@ scikit-learn
 PyPDF2
 seaborn
 openreview-py
+selenium
+webdriver-manager
+beautifulsoup4
