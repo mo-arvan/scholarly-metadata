@@ -24,8 +24,26 @@ def main():
 
     results_df = pd.read_csv('results/keyword_match.csv', index_col=0)
 
-    results_df = results_df.loc[np.logical_not(
-        pd.isnull(results_df["contains"]))]
+    results_df["file_name"] = results_df["file_path"].apply(
+        lambda x: x.split("/")[-1].split(".")[0].replace("-Paper", ""))
+
+    neurips_papers = pd.read_csv('results/neurips_papers.csv')
+
+    neurips_papers = neurips_papers.loc[~pd.isnull(
+        neurips_papers["openreviewCode"])]
+
+    neurips_papers["file_name"] = neurips_papers["url"].apply(
+        lambda x: x.split("/")[-1].split(".")[0].replace("-Abstract", ""))
+
+    avaiable_code = neurips_papers["file_name"].tolist()
+
+    results_df["open_review_contains"] = results_df["file_name"].apply(
+        lambda x: x in avaiable_code)
+
+    # excluding a few failed text searches
+    results_df = results_df.loc[~pd.isnull(results_df["contains"])]
+
+    results_df["has_code"] = results_df["open_review_contains"] | results_df["contains"]
 
     results_df["year"] = results_df["file_path"].apply(
         lambda x: int(x.split("/")[1].split("_")[1]))
@@ -33,20 +51,25 @@ def main():
     results_df["conference"] = results_df["file_path"].apply(
         lambda x: x.split("/")[1].split("_")[0])
 
-    # results_grouped = results_df[["conference", "year", "contains"]].groupby(
-    #     ["conference", "year", "contains"]).size().reset_index(name="count")
+    conference_dict = {"interspeech": "Interspeech",
+                       "neurips": "NeurIPS",
+                       }
 
-    interspeech_results = results_df[["conference", "year", "contains"]].groupby(["conference", "year"]).agg(
-        submissions_with_code=('contains', 'sum'),
-        total_submissions=('contains', 'count')).reset_index()
+    results_df["conference"] = results_df["conference"].apply(
+        lambda x: conference_dict[x])
 
-    interspeech_results["code_ratio"] = interspeech_results["submissions_with_code"] / \
-        interspeech_results["total_submissions"]
+    # left join with the results
+    search_df = results_df[["conference", "year", "has_code"]].groupby(["conference", "year"]).agg(
+        submissions_with_code=('has_code', 'sum'),
+        total_submissions=('has_code', 'count')).reset_index()
+
+    search_df["code_ratio"] = search_df["submissions_with_code"] / \
+        search_df["total_submissions"]
     # interspeech_results["conference"] = "Interspeech"
 
     acl_results = pd.read_csv('results/acl.csv')
 
-    all_results = pd.concat([interspeech_results, acl_results])
+    all_results = pd.concat([search_df, acl_results])
 
     all_results["code_ratio"] = all_results["code_ratio"] * 100
 
@@ -59,12 +82,27 @@ def main():
                                              hue="conference",
                                              kind="line",
                                              style="conference",
+                                             markers=True,
                                              facet_kws={'legend_out': True}) \
-        .set(xlabel="Year", ylabel="% Code Submission", title="Code Submission Ratio")
+        .set(xlabel="Year", ylabel="% Artifact Submission", title="Artifact Submission Ratio")
     submissions_with_code_plot._legend.set_title('Conference')
 
-    submissions_with_code_plot.savefig("results/code_inclusion.svg")
-    submissions_with_code_plot.savefig("results/code_inclusion.png")
+    submissions_with_code_plot.savefig("results/artifact_inclusion.svg")
+    submissions_with_code_plot.savefig("results/artifact_inclusion.png")
+
+    total_submissions_plot = sns.relplot(data=all_results,
+                                         x="year",
+                                         y="total_submissions",
+                                         hue="conference",
+                                         kind="line",
+                                         style="conference",
+                                         markers=True,
+                                         facet_kws={'legend_out': True}) \
+        .set(xlabel="Year", ylabel="# Accepted Papers", title="Accepted Papers over Years")
+    total_submissions_plot._legend.set_title('Conference')
+
+    total_submissions_plot.savefig("results/total_submissions.svg")
+    total_submissions_plot.savefig("results/total_submissions.png")
 
     # results_grouped.plot(x="year", y="count", kind="bar").get_figure().savefig(
     #     "results.png")
