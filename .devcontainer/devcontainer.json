@@ -5,7 +5,7 @@
 	"dockerFile": "../artifact/setup/dockerfile",
 	"context": "../artifact",
 	"mounts": [
-		"source=/home/ar-gpu-server/.ssh,target=/root/.ssh,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind",
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -14,17 +14,20 @@
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "pip3 install --user -r requirements.txt",
 	// Configure tool-specific properties.
-	// "customizations": {},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"VisualStudioExptTeam.vscodeintellicode",
+				"christian-kohler.path-intellisense",
+				"GitHub.copilot",
+				"donjayamanne.python-environment-manager"
+			]
+		}
+	},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "root",
-	"extensions": [
-		"ms-python.python",
-		"ms-python.vscode-pylance",
-		"VisualStudioExptTeam.vscodeintellicode",
-		"christian-kohler.path-intellisense",
-		"GitHub.copilot",
-		"donjayamanne.python-environment-manager"
-	],
 	"runArgs": [
 		"--shm-size=16gb"
 	]
