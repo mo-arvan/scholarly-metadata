@@ -1,6 +1,6 @@
-# Reproducibility Analysis
+# Scholarly-Metadata
 
-This repository contains the code for analyzing publications in [NeurIPS Proceedings](https://papers.nips.cc/), (ACL Anthology)[https://aclanthology.org/]), and (ISCA Archive)[https://www.isca-speech.org].
+This repository contains the code for downloading the papers and the meta data for publications in [NeurIPS Proceedings](https://papers.nips.cc/), (ACL Anthology)[https://aclanthology.org/]), and (ISCA Archive)[https://www.isca-speech.org].
 
 
 ## Steps 
